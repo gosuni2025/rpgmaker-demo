@@ -1021,7 +1021,7 @@ Object.defineProperty(Bitmap.prototype, 'url', {
  * [read-only] The base texture that holds the image.
  *
  * @property baseTexture
- * @type PIXI.BaseTexture
+ * @type Object
  */
 Object.defineProperty(Bitmap.prototype, 'baseTexture', {
     get: function() {
@@ -1808,13 +1808,8 @@ Graphics.initialize = function(width, height, type) {
 };
 
 Graphics._initializeBackend = function() {
-    if (this._rendererType === 'threejs') {
-        RendererFactory.setBackend('threejs');
-        RendererStrategy.setStrategy('threejs');
-    } else {
-        RendererFactory.setBackend('pixi');
-        RendererStrategy.setStrategy('pixi');
-    }
+    RendererFactory.setBackend('threejs');
+    RendererStrategy.setStrategy('threejs');
 };
 
 Graphics._initializeFilters = function() {
@@ -1822,90 +1817,6 @@ Graphics._initializeFilters = function() {
     WindowLayer._initVoidFilter();
 };
 
-// Helper to check if Three.js backend is active
-Graphics._isThreeBackend = function() {
-    return RendererFactory.getBackendName() === 'threejs';
-};
-
-// Mixin that applies ThreeContainer initialization and methods to an existing object
-function _threeInitAsContainer(self) {
-    // Copy prototype methods FIRST (before constructor call, since constructor uses them)
-    var proto = ThreeContainer.prototype;
-    var methods = ['addChild', 'addChildAt', 'removeChild', 'removeChildAt', 'removeChildren',
-                   'getChildIndex', 'setChildIndex', 'swapChildren', 'syncTransform',
-                   'getBounds', 'getLocalBounds', 'toGlobal', 'toLocal', 'renderWebGL', 'renderCanvas',
-                   'destroy', '_createScaleProxy', '_createPivotProxy'];
-    // NOTE: 'updateTransform' is intentionally excluded. Classes like Tilemap
-    // define custom updateTransform that must not be overwritten by the mixin.
-    // Those custom updateTransform already call ThreeContainer.prototype.updateTransform
-    // internally when in Three.js mode. For classes without custom updateTransform,
-    // we copy it after the methods loop.
-    if (!self.updateTransform || self.updateTransform === PIXI.Container.prototype.updateTransform) {
-        self.updateTransform = proto.updateTransform;
-    }
-    for (var i = 0; i < methods.length; i++) {
-        if (proto[methods[i]]) {
-            self[methods[i]] = proto[methods[i]];
-        }
-    }
-    // Copy property descriptors (override PIXI prototype getters/setters)
-    var props = Object.getOwnPropertyDescriptors(ThreeContainer.prototype);
-    var propNames = ['x', 'y', 'rotation', 'alpha', 'visible', 'filters', 'zIndex'];
-    for (var j = 0; j < propNames.length; j++) {
-        if (props[propNames[j]]) {
-            Object.defineProperty(self, propNames[j], props[propNames[j]]);
-        }
-    }
-    // Override PIXI prototype setters for scale/pivot/position/children/parent
-    // so ThreeContainer constructor can assign to them without triggering PIXI internals
-    Object.defineProperty(self, 'scale', { value: null, writable: true, configurable: true, enumerable: true });
-    Object.defineProperty(self, 'pivot', { value: null, writable: true, configurable: true, enumerable: true });
-    Object.defineProperty(self, 'position', { value: null, writable: true, configurable: true, enumerable: true });
-    Object.defineProperty(self, 'children', { value: [], writable: true, configurable: true, enumerable: true });
-    Object.defineProperty(self, 'parent', { value: null, writable: true, configurable: true, enumerable: true });
-    // Now call constructor (which uses _createScaleProxy, _createPivotProxy)
-    ThreeContainer.call(self);
-}
-
-// Mixin that applies ThreeSprite initialization and methods to an existing object
-function _threeInitAsSprite(self, texture) {
-    // Copy prototype methods FIRST (before constructor call, since constructor uses them)
-    var proto = ThreeSprite.prototype;
-    var methods = ['addChild', 'addChildAt', 'removeChild', 'removeChildAt', 'removeChildren',
-                   'getChildIndex', 'setChildIndex', 'syncTransform',
-                   'getBounds', 'getLocalBounds', 'renderWebGL', 'renderCanvas', 'containsPoint',
-                   'destroy', '_createScaleProxy', '_createAnchorProxy', '_createPivotProxy',
-                   '_updateTexture', '_updateFrame', '_updateBlendMode'];
-    // NOTE: 'updateTransform' excluded - same reason as _threeInitAsContainer
-    if (!self.updateTransform || self.updateTransform === PIXI.Sprite.prototype.updateTransform ||
-        self.updateTransform === PIXI.Container.prototype.updateTransform) {
-        self.updateTransform = proto.updateTransform;
-    }
-    for (var i = 0; i < methods.length; i++) {
-        if (proto[methods[i]]) {
-            self[methods[i]] = proto[methods[i]];
-        }
-    }
-    // Copy property descriptors (override PIXI prototype getters/setters)
-    var props = Object.getOwnPropertyDescriptors(ThreeSprite.prototype);
-    var propNames = ['x', 'y', 'rotation', 'alpha', 'visible', 'tint', 'blendMode',
-                     'texture', 'filters', 'width', 'height', 'zIndex'];
-    for (var j = 0; j < propNames.length; j++) {
-        if (props[propNames[j]]) {
-            Object.defineProperty(self, propNames[j], props[propNames[j]]);
-        }
-    }
-    // Override PIXI prototype setters for scale/anchor/pivot/position/children/parent
-    // so ThreeSprite constructor can assign to them without triggering PIXI internals
-    Object.defineProperty(self, 'scale', { value: null, writable: true, configurable: true, enumerable: true });
-    Object.defineProperty(self, 'anchor', { value: null, writable: true, configurable: true, enumerable: true });
-    Object.defineProperty(self, 'pivot', { value: null, writable: true, configurable: true, enumerable: true });
-    Object.defineProperty(self, 'position', { value: null, writable: true, configurable: true, enumerable: true });
-    Object.defineProperty(self, 'children', { value: [], writable: true, configurable: true, enumerable: true });
-    Object.defineProperty(self, 'parent', { value: null, writable: true, configurable: true, enumerable: true });
-    // Now call constructor (which uses _createScaleProxy, _createAnchorProxy, _createPivotProxy)
-    ThreeSprite.call(self, texture);
-}
 
 Graphics._setupCssFontLoading = function(){
     if(Graphics._cssFontLoading){
@@ -1931,7 +1842,7 @@ Graphics.canUseCssFontLoading = function(){
 Graphics.frameCount     = 0;
 
 /**
- * The alias of PIXI.blendModes.NORMAL.
+ * Blend mode: NORMAL.
  *
  * @static
  * @property BLEND_NORMAL
@@ -1941,7 +1852,7 @@ Graphics.frameCount     = 0;
 Graphics.BLEND_NORMAL   = 0;
 
 /**
- * The alias of PIXI.blendModes.ADD.
+ * Blend mode: ADD.
  *
  * @static
  * @property BLEND_ADD
@@ -1951,7 +1862,7 @@ Graphics.BLEND_NORMAL   = 0;
 Graphics.BLEND_ADD      = 1;
 
 /**
- * The alias of PIXI.blendModes.MULTIPLY.
+ * Blend mode: MULTIPLY.
  *
  * @static
  * @property BLEND_MULTIPLY
@@ -1961,7 +1872,7 @@ Graphics.BLEND_ADD      = 1;
 Graphics.BLEND_MULTIPLY = 2;
 
 /**
- * The alias of PIXI.blendModes.SCREEN.
+ * Blend mode: SCREEN.
  *
  * @static
  * @property BLEND_SCREEN
@@ -2353,7 +2264,7 @@ Graphics.isInsideCanvas = function(x, y) {
 };
 
 /**
- * Calls pixi.js garbage collector
+ * Calls renderer garbage collector
  */
 Graphics.callGC = function() {
     RendererStrategy.callGC(Graphics._renderer);
@@ -4059,7 +3970,7 @@ function Sprite() {
     this.initialize.apply(this, arguments);
 }
 
-Sprite.prototype = Object.create(PIXI.Sprite.prototype);
+Sprite.prototype = Object.create(ThreeSprite.prototype);
 Sprite.prototype.constructor = Sprite;
 
 Sprite.voidFilter = null;
@@ -4071,11 +3982,7 @@ Sprite._initVoidFilter = function() {
 Sprite.prototype.initialize = function(bitmap) {
     var texture = RendererFactory.createTexture(RendererFactory.createBaseTexture(document.createElement('canvas')));
 
-    if (Graphics._isThreeBackend()) {
-        _threeInitAsSprite(this, texture);
-    } else {
-        PIXI.Sprite.call(this, texture);
-    }
+    ThreeSprite.call(this, texture);
 
     this._bitmap = null;
     this._frame = new Rectangle();
@@ -4448,9 +4355,6 @@ Sprite.prototype._executeTint = function(x, y, w, h) {
     context.drawImage(this._bitmap.canvas, x, y, w, h, 0, 0, w, h);
 };
 
-Sprite.prototype._renderCanvas_PIXI = PIXI.Sprite.prototype._renderCanvas;
-Sprite.prototype._renderWebGL_PIXI = PIXI.Sprite.prototype._renderWebGL;
-
 /**
  * @method _renderCanvas
  * @param {Object} renderer
@@ -4463,77 +4367,9 @@ Sprite.prototype._renderCanvas = function(renderer) {
     if(this.bitmap && !this.bitmap.isReady()){
         return;
     }
-
-    if (this.texture.frame.width > 0 && this.texture.frame.height > 0) {
-        if (!this._threeObj) {
-            this._renderCanvas_PIXI(renderer);
-        }
-    }
 };
 
-/**
- * checks if we need to speed up custom blendmodes
- * @param renderer
- * @private
- */
-Sprite.prototype._speedUpCustomBlendModes = function(renderer) {
-    var picture = renderer.plugins.picture;
-    var blend = this.blendMode;
-    if (renderer.renderingToScreen && renderer._activeRenderTarget.root) {
-        if (picture.drawModes[blend]) {
-            var stage = renderer._lastObjectRendered;
-            var f = stage._filters;
-            if (!f || !f[0]) {
-                setTimeout(function () {
-                    var f = stage._filters;
-                    if (!f || !f[0]) {
-                        stage.filters = [Sprite.voidFilter];
-                        stage.filterArea = new Rectangle(0, 0, Graphics.width, Graphics.height);
-                    }
-                }, 0);
-            }
-        }
-    }
-};
-
-/**
- * @method _renderWebGL
- * @param {Object} renderer
- * @private
- */
-Sprite.prototype._renderWebGL = function(renderer) {
-    if (this.bitmap) {
-        this.bitmap.touch();
-    }
-    if(this.bitmap && !this.bitmap.isReady()){
-        return;
-    }
-    if (this._threeObj) {
-        return;
-    }
-    if (this.texture.frame.width > 0 && this.texture.frame.height > 0) {
-        if (this._bitmap) {
-            this._bitmap.checkDirty();
-        }
-
-        //copy of pixi-v4 internal code
-        this.calculateVertices();
-
-        if (this.pluginName === 'sprite' && this._isPicture) {
-            // use heavy renderer, which reduces artifacts and applies corrent blendMode,
-            // but does not use multitexture optimization
-            this._speedUpCustomBlendModes(renderer);
-            renderer.setObjectRenderer(renderer.plugins.picture);
-            renderer.plugins.picture.render(this);
-        } else {
-            // use pixi super-speed renderer
-            renderer.setObjectRenderer(renderer.plugins[this.pluginName]);
-			renderer.plugins[this.pluginName].render(this);
-        }
-    }
-};
-
-// The important members from Pixi.js
+// The important members
 
 /**
  * The visibility of the sprite.
@@ -4649,15 +4485,11 @@ function Tilemap() {
     this.initialize.apply(this, arguments);
 }
 
-Tilemap.prototype = Object.create(PIXI.Container.prototype);
+Tilemap.prototype = Object.create(ThreeContainer.prototype);
 Tilemap.prototype.constructor = Tilemap;
 
 Tilemap.prototype.initialize = function() {
-    if (Graphics._isThreeBackend()) {
-        _threeInitAsContainer(this);
-    } else {
-        PIXI.Container.call(this);
-    }
+    ThreeContainer.call(this);
     this._needsRepaint = false;
 
     this._margin = 20;
@@ -4884,11 +4716,7 @@ Tilemap.prototype.updateTransform = function() {
         this._needsRepaint = false;
     }
     this._sortChildren();
-    if (this._threeObj) {
-        ThreeContainer.prototype.updateTransform.call(this);
-    } else {
-        PIXI.Container.prototype.updateTransform.call(this);
-    }
+    ThreeContainer.prototype.updateTransform.call(this);
 };
 
 /**
@@ -5563,7 +5391,7 @@ Tilemap.WATERFALL_AUTOTILE_TABLE = [
     [[2,0],[3,0],[2,1],[3,1]],[[0,0],[3,0],[0,1],[3,1]]
 ];
 
-// The important members from Pixi.js
+// The important members
 
 /**
  * [read-only] The array of children of the tilemap.
@@ -5627,7 +5455,6 @@ function ShaderTilemap() {
 ShaderTilemap.prototype = Object.create(Tilemap.prototype);
 ShaderTilemap.prototype.constructor = ShaderTilemap;
 
-// Pixi-specific tilemap settings are now in PixiRendererFactory.js
 
 /**
  * Uploads animation state in renderer
@@ -5644,34 +5471,26 @@ ShaderTilemap.prototype._hackRenderer = function(renderer) {
 };
 
 /**
- * PIXI render method
+ * Render method
  *
  * @method renderCanvas
- * @param {Object} pixi renderer
+ * @param {Object} renderer
  */
 ShaderTilemap.prototype.renderCanvas = function(renderer) {
     this._hackRenderer(renderer);
-    if (this._threeObj) {
-        ThreeContainer.prototype.renderCanvas.call(this, renderer);
-    } else {
-        PIXI.Container.prototype.renderCanvas.call(this, renderer);
-    }
+    ThreeContainer.prototype.renderCanvas.call(this, renderer);
 };
 
 
 /**
- * PIXI render method
+ * Render method
  *
  * @method renderWebGL
- * @param {Object} pixi renderer
+ * @param {Object} renderer
  */
 ShaderTilemap.prototype.renderWebGL = function(renderer) {
     this._hackRenderer(renderer);
-    if (this._threeObj) {
-        ThreeContainer.prototype.renderWebGL.call(this, renderer);
-    } else {
-        PIXI.Container.prototype.renderWebGL.call(this, renderer);
-    }
+    ThreeContainer.prototype.renderWebGL.call(this, renderer);
 };
 
 /**
@@ -5721,11 +5540,7 @@ ShaderTilemap.prototype.updateTransform = function() {
         this._needsRepaint = false;
     }
     this._sortChildren();
-    if (this._threeObj) {
-        ThreeContainer.prototype.updateTransform.call(this);
-    } else {
-        PIXI.Container.prototype.updateTransform.call(this);
-    }
+    ThreeContainer.prototype.updateTransform.call(this);
 };
 
 /**
@@ -6055,20 +5870,15 @@ function TilingSprite() {
     this.initialize.apply(this, arguments);
 }
 
-TilingSprite.prototype = Object.create(PIXI.extras.PictureTilingSprite.prototype);
+TilingSprite.prototype = Object.create(ThreeSprite.prototype);
 TilingSprite.prototype.constructor = TilingSprite;
 
 TilingSprite.prototype.initialize = function(bitmap) {
     var texture = RendererFactory.createTexture(RendererFactory.createBaseTexture(document.createElement('canvas')));
 
-    if (Graphics._isThreeBackend()) {
-        _threeInitAsSprite(this, texture);
-        // Add tiling-specific properties
-        this._tilePosition = { x: 0, y: 0 };
-        this._tileScale = { x: 1, y: 1 };
-    } else {
-        PIXI.extras.PictureTilingSprite.call(this, texture);
-    }
+    ThreeSprite.call(this, texture);
+    this._tilePosition = { x: 0, y: 0 };
+    this._tileScale = { x: 1, y: 1 };
 
     this._bitmap = null;
     this._width = 0;
@@ -6086,9 +5896,6 @@ TilingSprite.prototype.initialize = function(bitmap) {
     this.bitmap = bitmap;
 };
 
-TilingSprite.prototype._renderCanvas_PIXI = PIXI.extras.PictureTilingSprite.prototype._renderCanvas;
-TilingSprite.prototype._renderWebGL_PIXI = PIXI.extras.PictureTilingSprite.prototype._renderWebGL;
-
 /**
  * @method _renderCanvas
  * @param {Object} renderer
@@ -6097,11 +5904,6 @@ TilingSprite.prototype._renderWebGL_PIXI = PIXI.extras.PictureTilingSprite.proto
 TilingSprite.prototype._renderCanvas = function(renderer) {
     if (this._bitmap) {
         this._bitmap.touch();
-    }
-    if (this.texture.frame.width > 0 && this.texture.frame.height > 0) {
-        if (!this._threeObj) {
-            this._renderCanvas_PIXI(renderer);
-        }
     }
 };
 
@@ -6114,13 +5916,8 @@ TilingSprite.prototype._renderWebGL = function(renderer) {
     if (this._bitmap) {
         this._bitmap.touch();
     }
-    if (this.texture.frame.width > 0 && this.texture.frame.height > 0) {
-        if (this._bitmap) {
-            this._bitmap.checkDirty();
-        }
-        if (!this._threeObj) {
-            this._renderWebGL_PIXI(renderer);
-        }
+    if (this._bitmap) {
+        this._bitmap.checkDirty();
     }
 };
 
@@ -6214,20 +6011,10 @@ TilingSprite.prototype.setFrame = function(x, y, width, height) {
  * @private
  */
 TilingSprite.prototype.updateTransform = function() {
-    if (this._threeObj) {
-        // In Three.js mode, tilePosition is not available (PIXI transform destroyed)
-        // Store origin for Three.js tiling offset use
-        this._tileOriginX = Math.round(-this.origin.x);
-        this._tileOriginY = Math.round(-this.origin.y);
-        ThreeSprite.prototype.updateTransform.call(this);
-    } else {
-        this.tilePosition.x = Math.round(-this.origin.x);
-        this.tilePosition.y = Math.round(-this.origin.y);
-        this.updateTransformTS();
-    }
+    this._tileOriginX = Math.round(-this.origin.x);
+    this._tileOriginY = Math.round(-this.origin.y);
+    ThreeSprite.prototype.updateTransform.call(this);
 };
-
-TilingSprite.prototype.updateTransformTS = PIXI.extras.TilingSprite.prototype.updateTransform;
 
 /**
  * @method _onBitmapLoad
@@ -6254,27 +6041,7 @@ TilingSprite.prototype._refresh = function() {
 };
 
 
-TilingSprite.prototype._speedUpCustomBlendModes = Sprite.prototype._speedUpCustomBlendModes;
-
-/**
- * @method _renderWebGL
- * @param {Object} renderer
- * @private
- */
-TilingSprite.prototype._renderWebGL = function(renderer) {
-    if (this._bitmap) {
-        this._bitmap.touch();
-        this._bitmap.checkDirty();
-    }
-
-    this._speedUpCustomBlendModes(renderer);
-
-    if (!this._threeObj) {
-        this._renderWebGL_PIXI(renderer);
-    }
-};
-
-// The important members from Pixi.js
+// The important members
 
 /**
  * The visibility of the tiling sprite.
@@ -6308,15 +6075,11 @@ function ScreenSprite() {
     this.initialize.apply(this, arguments);
 }
 
-ScreenSprite.prototype = Object.create(PIXI.Container.prototype);
+ScreenSprite.prototype = Object.create(ThreeContainer.prototype);
 ScreenSprite.prototype.constructor = ScreenSprite;
 
 ScreenSprite.prototype.initialize = function () {
-    if (Graphics._isThreeBackend()) {
-        _threeInitAsContainer(this);
-    } else {
-        PIXI.Container.call(this);
-    }
+    ThreeContainer.call(this);
 
     this._graphics = RendererFactory.createGraphicsNode();
     this.addChild(this._graphics);
@@ -6432,15 +6195,11 @@ function Window() {
     this.initialize.apply(this, arguments);
 }
 
-Window.prototype = Object.create(PIXI.Container.prototype);
+Window.prototype = Object.create(ThreeContainer.prototype);
 Window.prototype.constructor = Window;
 
 Window.prototype.initialize = function() {
-    if (Graphics._isThreeBackend()) {
-        _threeInitAsContainer(this);
-    } else {
-        PIXI.Container.call(this);
-    }
+    ThreeContainer.call(this);
 
     this._isWindow = true;
     this._windowskin = null;
@@ -6790,11 +6549,7 @@ Window.prototype.updateTransform = function() {
     this._updateArrows();
     this._updatePauseSign();
     this._updateContents();
-    if (this._threeObj) {
-        ThreeContainer.prototype.updateTransform.call(this);
-    } else {
-        PIXI.Container.prototype.updateTransform.call(this);
-    }
+    ThreeContainer.prototype.updateTransform.call(this);
 };
 
 /**
@@ -7046,7 +6801,7 @@ Window.prototype._updatePauseSign = function() {
     sprite.visible = this.isOpen();
 };
 
-// The important members from Pixi.js
+// The important members
 
 /**
  * The visibility of the window.
@@ -7127,15 +6882,11 @@ function WindowLayer() {
     this.initialize.apply(this, arguments);
 }
 
-WindowLayer.prototype = Object.create(PIXI.Container.prototype);
+WindowLayer.prototype = Object.create(ThreeContainer.prototype);
 WindowLayer.prototype.constructor = WindowLayer;
 
 WindowLayer.prototype.initialize = function() {
-    if (Graphics._isThreeBackend()) {
-        _threeInitAsContainer(this);
-    } else {
-        PIXI.Container.call(this);
-    }
+    ThreeContainer.call(this);
     this._width = 0;
     this._height = 0;
     this._tempCanvas = null;
@@ -7145,26 +6896,12 @@ WindowLayer.prototype.initialize = function() {
     this._windowMask.beginFill(0xffffff, 1);
     this._windowMask.drawRect(0, 0, 0, 0);
     this._windowMask.endFill();
-    if (this._windowMask.graphicsData) {
-        this._windowRect = this._windowMask.graphicsData[0].shape;
-    } else {
-        // Three.js mode: use a simple rectangle object for scissor tracking
-        this._windowRect = { x: 0, y: 0, width: 0, height: 0 };
-    }
+    this._windowRect = { x: 0, y: 0, width: 0, height: 0 };
 
     this._renderSprite = null;
     this.filterArea = new Rectangle();
     this.filters = [WindowLayer.voidFilter];
-
-    //temporary fix for memory leak bug
-    if (!Graphics._isThreeBackend()) {
-        this.on('removed', this.onRemoveAsAChild);
-    }
 };
-
-WindowLayer.prototype.onRemoveAsAChild = function() {
-    this.removeChildren();
-}
 
 WindowLayer.voidFilter = null;
 
@@ -7307,47 +7044,7 @@ WindowLayer.prototype._canvasClearWindowRect = function(renderSession, window) {
  * @private
  */
 WindowLayer.prototype.renderWebGL = function(renderer) {
-    if (!this.visible || !this.renderable) {
-        return;
-    }
-
-    if (this.children.length==0) {
-        return;
-    }
-
-    renderer.flush();
-    this.filterArea.copy(this);
-    renderer.filterManager.pushFilter(this, this.filters);
-    renderer.currentRenderer.start();
-
-    var shift = new Point();
-    var rt = renderer._activeRenderTarget;
-    var projectionMatrix = rt.projectionMatrix;
-    shift.x = Math.round((projectionMatrix.tx + 1) / 2 * rt.sourceFrame.width);
-    shift.y = Math.round((projectionMatrix.ty + 1) / 2 * rt.sourceFrame.height);
-
-    for (var i = 0; i < this.children.length; i++) {
-        var child = this.children[i];
-        if (child._isWindow && child.visible && child.openness > 0) {
-            this._maskWindow(child, shift);
-            renderer.maskManager.pushScissorMask(this, this._windowMask);
-            renderer.clear();
-            renderer.maskManager.popScissorMask();
-            renderer.currentRenderer.start();
-            child.renderWebGL(renderer);
-            renderer.currentRenderer.flush();
-        }
-    }
-
-    renderer.flush();
-    renderer.filterManager.popFilter();
-    renderer.maskManager.popScissorMask();
-
-    for (var j = 0; j < this.children.length; j++) {
-        if (!this.children[j]._isWindow) {
-            this.children[j].renderWebGL(renderer);
-        }
-    }
+    // No-op: Three.js handles window rendering via scene graph
 };
 
 /**
@@ -7365,7 +7062,7 @@ WindowLayer.prototype._maskWindow = function(window, shift) {
     rect.height = window.height * window._openness / 255;
 };
 
-// The important members from Pixi.js
+// The important members
 
 /**
  * The x coordinate of the window layer.
@@ -7439,15 +7136,11 @@ function Weather() {
     this.initialize.apply(this, arguments);
 }
 
-Weather.prototype = Object.create(PIXI.Container.prototype);
+Weather.prototype = Object.create(ThreeContainer.prototype);
 Weather.prototype.constructor = Weather;
 
 Weather.prototype.initialize = function() {
-    if (Graphics._isThreeBackend()) {
-        _threeInitAsContainer(this);
-    } else {
-        PIXI.Container.call(this);
-    }
+    ThreeContainer.call(this);
 
     this._width = Graphics.width;
     this._height = Graphics.height;
@@ -7637,24 +7330,14 @@ Weather.prototype._rebornSprite = function(sprite) {
  * The color matrix filter for WebGL.
  *
  * @class ToneFilter
- * @extends PIXI.Filter
+ * @extends ThreeColorMatrixFilter
  * @constructor
  */
 function ToneFilter() {
-    if (Graphics._isThreeBackend()) {
-        ThreeColorMatrixFilter.call(this);
-        var proto = ThreeColorMatrixFilter.prototype;
-        for (var key in proto) {
-            if (typeof proto[key] === 'function' && !this[key]) {
-                this[key] = proto[key];
-            }
-        }
-    } else {
-        PIXI.filters.ColorMatrixFilter.call(this);
-    }
+    ThreeColorMatrixFilter.call(this);
 }
 
-ToneFilter.prototype = Object.create(PIXI.filters.ColorMatrixFilter.prototype);
+ToneFilter.prototype = Object.create(ThreeColorMatrixFilter.prototype);
 ToneFilter.prototype.constructor = ToneFilter;
 
 /**
@@ -7714,15 +7397,11 @@ function ToneSprite() {
     this.initialize.apply(this, arguments);
 }
 
-ToneSprite.prototype = Object.create(PIXI.Container.prototype);
+ToneSprite.prototype = Object.create(ThreeContainer.prototype);
 ToneSprite.prototype.constructor = ToneSprite;
 
 ToneSprite.prototype.initialize = function() {
-    if (Graphics._isThreeBackend()) {
-        _threeInitAsContainer(this);
-    } else {
-        PIXI.Container.call(this);
-    }
+    ThreeContainer.call(this);
     this.clear();
 };
 
@@ -7823,15 +7502,11 @@ function Stage() {
     this.initialize.apply(this, arguments);
 }
 
-Stage.prototype = Object.create(PIXI.Container.prototype);
+Stage.prototype = Object.create(ThreeContainer.prototype);
 Stage.prototype.constructor = Stage;
 
 Stage.prototype.initialize = function() {
-    if (Graphics._isThreeBackend()) {
-        _threeInitAsContainer(this);
-    } else {
-        PIXI.Container.call(this);
-    }
+    ThreeContainer.call(this);
 
     // The interactive flag causes a memory leak.
     this.interactive = false;
