@@ -106,9 +106,9 @@ var Liquidize = Liquidize || {};
 Liquidize.MadeWithMV = {};
 Liquidize.MadeWithMV.Parameters = PluginManager.parameters('MadeWithMv');
 
-Liquidize.MadeWithMV.ShowMV = JSON.parse(Liquidize.MadeWithMV.Parameters["Show Made With MV"]);
+Liquidize.MadeWithMV.ShowMV = false; // Force disabled
 Liquidize.MadeWithMV.MVImage = String(Liquidize.MadeWithMV.Parameters["Made with MV Image"]);
-Liquidize.MadeWithMV.ShowCustom = JSON.parse(Liquidize.MadeWithMV.Parameters["Show Custom Splash"]);
+Liquidize.MadeWithMV.ShowCustom = false; // Force disabled
 Liquidize.MadeWithMV.CustomImage = String(Liquidize.MadeWithMV.Parameters["Custom Image"]);
 Liquidize.MadeWithMV.FadeOutTime = Number(Liquidize.MadeWithMV.Parameters["Fade Out Time"]) || 120;
 Liquidize.MadeWithMV.FadeInTime = Number(Liquidize.MadeWithMV.Parameters["Fade In Time"]) || 120;
