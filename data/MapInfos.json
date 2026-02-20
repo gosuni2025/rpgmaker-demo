@@ -1,0 +1,48 @@
+[
+  null,
+  null,
+  null,
+  null,
+  {
+    "id": 4,
+    "expanded": false,
+    "name": "Lava Cave",
+    "order": 4,
+    "parentId": 3,
+    "scrollX": 0,
+    "scrollY": 0
+  },
+  null,
+  null,
+  null,
+  {
+    "id": 8,
+    "expanded": false,
+    "name": "Big City",
+    "order": 8,
+    "parentId": 7,
+    "scrollX": 0,
+    "scrollY": 0
+  },
+  null,
+  null,
+  null,
+  {
+    "id": 12,
+    "expanded": false,
+    "name": "World 1",
+    "order": 12,
+    "parentId": 0,
+    "scrollX": 0,
+    "scrollY": 0
+  },
+  {
+    "id": 13,
+    "expanded": false,
+    "name": "World 2",
+    "order": 13,
+    "parentId": 0,
+    "scrollX": 0,
+    "scrollY": 0
+  }
+]
